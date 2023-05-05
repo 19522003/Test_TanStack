@@ -1,6 +1,6 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { addStudent, getStudent, updateStudent } from 'apis/student.api'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMatch, useParams } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { Student } from 'types/students.type'
@@ -24,8 +24,15 @@ const initialFormState: FormStateType = {
   last_name: ''
 }
 
+const gender = {
+  male: 'Male',
+  female: 'Female',
+  other: 'Other'
+}
+
 export default function AddStudent() {
   const [formState, setFormState] = useState<FormStateType>(initialFormState)
+  const queryClient = useQueryClient()
   const addMatch = useMatch('/students/add')
   const isMatch = !!addMatch
   const { id } = useParams()
@@ -36,19 +43,27 @@ export default function AddStudent() {
     }
   })
 
-  useQuery({
+  const studentQuery = useQuery({
     queryKey: ['student', id],
     queryFn: () => getStudent(id as string),
     enabled: id !== undefined,
-    onSuccess(data) {
-      console.log(data)
-      setFormState(data.data)
-    }
+    staleTime: 10000
+    // onSuccess(data) {
+    //   console.log(data)
+    //   setFormState(data.data)
+    // }
   })
+
+  useEffect(() => {
+    if (studentQuery.data) setFormState(studentQuery.data.data)
+  }, [studentQuery.data])
 
   const updateStudentMutation = useMutation({
     mutationFn: (_) => {
       return updateStudent(id as string, formState as Student)
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['student', id], data)
     }
   })
 
@@ -124,9 +139,9 @@ export default function AddStudent() {
                   type='radio'
                   name='gender'
                   className='h-4 w-4 border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-blue-600'
-                  checked={formState.gender === 'male'}
+                  checked={formState.gender === gender.male}
                   onChange={handleChange('gender')}
-                  value='male'
+                  value={gender.male}
                 />
                 <label htmlFor='gender-1' className='ml-2 text-sm font-medium text-gray-900 dark:text-gray-300'>
                   Male
@@ -138,9 +153,9 @@ export default function AddStudent() {
                   type='radio'
                   name='gender'
                   className='h-4 w-4 border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-blue-600'
-                  checked={formState.gender === 'female'}
+                  checked={formState.gender === gender.female}
                   onChange={handleChange('gender')}
-                  value='female'
+                  value={gender.female}
                 />
                 <label htmlFor='gender-2' className='ml-2 text-sm font-medium text-gray-900 dark:text-gray-300'>
                   Female
@@ -152,9 +167,9 @@ export default function AddStudent() {
                   type='radio'
                   name='gender'
                   className='h-4 w-4 border-gray-300 bg-gray-100 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:ring-offset-gray-800 dark:focus:ring-blue-600'
-                  checked={formState.gender === 'other'}
+                  checked={formState.gender === gender.other}
                   onChange={handleChange('gender')}
-                  value='other'
+                  value={gender.other}
                 />
                 <label htmlFor='gender-3' className='ml-2 text-sm font-medium text-gray-900 dark:text-gray-300'>
                   Other

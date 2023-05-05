@@ -1,5 +1,5 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { deleteStudent, getStudents } from 'apis/student.api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { deleteStudent, getStudent, getStudents } from 'apis/student.api'
 import { Link } from 'react-router-dom'
 import { useQueryString } from 'utils/utils'
 import classNames from 'classnames'
@@ -8,6 +8,7 @@ import { toast } from 'react-toastify'
 const LIMIT = 10
 export default function Students() {
   const queryString: { page?: string } = useQueryString()
+  const queryClient = useQueryClient()
   const page = Number(queryString.page) || 1
 
   const studentsQuery = useQuery({
@@ -22,10 +23,18 @@ export default function Students() {
     },
     onSuccess: (_, id) => {
       toast.success(`Xóa thành công ${id}`)
+      queryClient.invalidateQueries({ queryKey: ['students', page], exact: true })
     }
   })
   const handleDelete = (id: number) => {
     deleteStudentMutation.mutate(id)
+  }
+
+  const handlePreFetchStudent = (id: number) => {
+    queryClient.prefetchQuery(['student', String(id)], {
+      queryFn: () => getStudent(id),
+      staleTime: 10000
+    })
   }
   const totalStudentCount = Number(studentsQuery.data?.headers['x-total-count']) || 0
   const totalPage = Math.ceil(totalStudentCount / LIMIT)
@@ -87,6 +96,7 @@ export default function Students() {
                   <tr
                     key={student.id}
                     className='border-b bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-600'
+                    onMouseEnter={() => handlePreFetchStudent(student.id)}
                   >
                     <td className='px-6 py-4'>{student.id}</td>
                     <td className='px-6 py-4'>
